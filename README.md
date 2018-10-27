@@ -1,2 +1,2 @@
-# socket_programming
-Socket programming assignment
+# socket
+socket programming assignment
