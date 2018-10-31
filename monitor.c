@@ -3,25 +3,24 @@
 #include <stdlib.h> 
 #include <netinet/in.h> 
 #include <string.h> 
-#define PORT 26319 
 #define MAXLINE 1024 
+#define PORT 26319 
 
 int main(int argc, char const *argv[]) { 
 	int sockfd = 0; /* Socket descriptor */
-	int valread; 
+	int valread = 0; 
 	struct sockaddr_in serv_addr; 
 	char buffer[1024] = {0};
-	char nomatch[1024];
-	char linkid[MAXLINE], size[MAXLINE], power[MAXLINE];
-	char prop_delay[MAXLINE], trans_delay[MAXLINE], end_delay[MAXLINE];
+	char final_data[1024] = {0};
+	char linkid[MAXLINE] = {0}, size[MAXLINE] = {0}, power[MAXLINE] = {0};
+	char prop_delay[MAXLINE] = {0}, trans_delay[MAXLINE] = {0}, end_delay[MAXLINE] = {0};
 
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* TCP Socket creation */ 
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* TCP Socket creation */ 
 		printf("\n TCP Socket creation error \n"); 
 		return -1; 
 	} 
 
 	memset(&serv_addr, '0', sizeof(serv_addr)); 
-
 	serv_addr.sin_family = AF_INET; //IP4
 	serv_addr.sin_port = htons(PORT); 
 
@@ -31,22 +30,24 @@ int main(int argc, char const *argv[]) {
 		return -1; 
 	} 
 
-	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) { /* Connecting to server */
+	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) { /* Connecting to server */
 		printf("\nConnection Failed \n"); 
 		return -1; 
 	}
 
 	printf("The Monitor is up and running\n");
 	while(1) {
+		/* Receving message of client input from AWS */
 		valread = read(sockfd, buffer, 1024);
 		sscanf(buffer, "%s %s %s", linkid, size, power);
 		printf("The monitor received input=<%s>, size=<%s>, and power=<%s> from the AWS\n", linkid, size, power);
-		valread = read(sockfd, nomatch, 1024);
-		if (strcmp(nomatch,"No match") == 0)
+		/* Receving message of complete information from AWS */
+		valread = read(sockfd, final_data, 1024);
+		if (strcmp(final_data,"No match") == 0)
 			printf("Found no matches for link <%s>\n", linkid);
 		else {
-			sscanf(nomatch, "%s %s %s", prop_delay, trans_delay, end_delay);
-			printf("The result for link <%s>:\nTt = <%s>ms\nTt = <%s>ms\nDelay = <%s>ms\n", linkid, trans_delay, prop_delay, end_delay);
+			sscanf(final_data, "%s %s %s", prop_delay, trans_delay, end_delay);
+			printf("The result for link <%s>:\nTt = <%s>ms\nTp = <%s>ms\nDelay = <%s>ms\n", linkid, trans_delay, prop_delay, end_delay);
 		}
 	}
 	close(sockfd);

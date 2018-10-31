@@ -3,16 +3,17 @@
 #include <stdlib.h> 
 #include <netinet/in.h> 
 #include <string.h> 
+#define MAXLINE 1024 
 #define PORT 25319 
 
 int main(int argc, char const *argv[]) { 
 	int sockfd = 0; /* Socket descriptor */
-	int valread; 
+	int valread = 0; 
 	struct sockaddr_in serv_addr; 
-	char buffer[1024] = {0};
-	char nomatch[1024] = {0};
+	char buffer[MAXLINE] = {0};
+	char final_data[MAXLINE] = {0};
 
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* TCP Socket creation */ 
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* TCP Socket creation */ 
 		printf("\n TCP Socket creation error \n"); 
 		return -1; 
 	} 
@@ -27,22 +28,22 @@ int main(int argc, char const *argv[]) {
 		return -1; 
 	} 
 
-	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) { /* Connecting to server */
+	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) { /* Connecting to server */
 		printf("\nConnection Failed \n"); 
 		return -1; 
 	}
 
 	printf("The client is up and running\n");
-	printf("The client sent link ID=<%s>,size=<%s>, and power=<%s> to AWS\n",argv[1], argv[2], argv[3]);
+	printf("The client sent link ID=<%s>,size=<%s>, and power=<%s> to AWS\n", argv[1], argv[2], argv[3]);
 	snprintf(buffer, sizeof(buffer), "%s %s %s", argv[1], argv[2], argv[3]); 
 	valread = send(sockfd, buffer, strlen(buffer), 0); /* Sending client input to AWS */
 
-	valread = read(sockfd, nomatch, 1024); /* Reading message from AWS */
+	valread = read(sockfd, final_data, MAXLINE); /* Reading message from AWS */
 
-	if (strcmp(nomatch,"No match") == 0) /* Checking whether results found or not */
+	if(strcmp(final_data,"No match") == 0) /* Checking whether results found or not */
 		printf("Found no matches for link <%s>\n", argv[1]);
 	else
-		printf("The delay for link <%s> is <%s>ms\n", argv[1], nomatch);
+		printf("The delay for link <%s> is <%s>ms\n", argv[1], final_data);
 
 	close(sockfd); /* Closing socket */
 	return 0; 

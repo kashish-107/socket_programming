@@ -4,7 +4,7 @@ all : client.c aws.c monitor.c serverA.c serverB.c serverC.c
 	gcc monitor.c -o monitor 
 	gcc serverA.c -o serverA
 	gcc serverB.c -o serverB
-	gcc serverC.c -o serverC -lm
+	gcc serverC.c -o serverC -lm 
 
 .PHONY: aws monitor serverA serverB serverC
 aws : 

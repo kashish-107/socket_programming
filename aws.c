@@ -24,31 +24,44 @@ void socket_details(struct sockaddr_in *temp, int port) {
 int main() { 
 	struct sockaddr_in udpservaddr, cliaddr, udpservaddrA, udpservaddrB, udpservaddrC;
 	struct sockaddr_in clientservaddr, monitorservaddr; 
-	int udpsockfd;  //Udp server socket file descriptor
-	int clientsockfd, client_socket, valread;  
-	int monitorsockfd, monitor_socket;  
-	char buffer[MAXLINE], bufferA[MAXLINE], bufferB[MAXLINE]; 
-	char end_delay[MAXLINE]; 
-	int opt = 1;
-	int len, n, m; 
-	int tcp_addrlen = sizeof(clientservaddr);
+	int udpsockfd;  /* UDP socket file descriptor */
+	int clientsockfd, client_socket; /* TCP client file descriptor */
+	int monitorsockfd, monitor_socket; /* TCP monitor file descriptor */
+	char buffer[MAXLINE], bufferA[MAXLINE], bufferB[MAXLINE];
 	char linkid[MAXLINE], size[MAXLINE], power[MAXLINE];
+	char end_delay[MAXLINE]; 
+	int len, n, m, valread, opt = 1; 
+	int tcp_addrlen = sizeof(clientservaddr);
 	char *nomatch = "No match";
 
-	if ((udpsockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
+	if((udpsockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {  /* UDP socket creation */ 
 		perror("UDP socket creation failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 
-	if ((clientsockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) { 
+	if((clientsockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {  /* TCP client socket creation */
 		perror("Client TCP socket creation failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 
-	if ((monitorsockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) { 
+	if((monitorsockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* TCP monitor socket creation */ 
 		perror("Monitor TCP socket creation failed"); 
 		exit(EXIT_FAILURE); 
 	} 
+
+	memset(&udpservaddr, 0, sizeof(udpservaddr)); 
+	memset(&udpservaddrA, 0, sizeof(udpservaddrA)); 
+	memset(&udpservaddrB, 0, sizeof(udpservaddrB)); 
+	memset(&udpservaddrC, 0, sizeof(udpservaddrC)); 
+	memset(&cliaddr, 0, sizeof(cliaddr)); 
+
+	/* Filling details of all sockets */
+	socket_details(&udpservaddr, UDP_PORT);
+	socket_details(&udpservaddrA, SERVER_A_PORT);
+	socket_details(&udpservaddrB, SERVER_B_PORT);
+	socket_details(&udpservaddrC, SERVER_C_PORT);
+	socket_details(&clientservaddr, CLIENT_PORT);
+	socket_details(&monitorservaddr, MONITOR_PORT);
 
 	if (setsockopt(clientsockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
 		perror("setsockopt");
@@ -60,55 +73,52 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	memset(&udpservaddr, 0, sizeof(udpservaddr)); 
-	memset(&udpservaddrA, 0, sizeof(udpservaddrA)); 
-	memset(&udpservaddrB, 0, sizeof(udpservaddrB)); 
-	memset(&udpservaddrC, 0, sizeof(udpservaddrC)); 
-	memset(&cliaddr, 0, sizeof(cliaddr)); 
 
-	socket_details(&udpservaddr, UDP_PORT);
-	socket_details(&udpservaddrA, SERVER_A_PORT);
-	socket_details(&udpservaddrB, SERVER_B_PORT);
-	socket_details(&udpservaddrC, SERVER_C_PORT);
-	socket_details(&clientservaddr, CLIENT_PORT);
-	socket_details(&monitorservaddr, MONITOR_PORT);
-
-	if (bind(udpsockfd, (const struct sockaddr *)&udpservaddr, sizeof(udpservaddr)) < 0 ) { 
+	/* Bind the socket with the server address */
+	if(bind(udpsockfd, (const struct sockaddr *)&udpservaddr, sizeof(udpservaddr)) < 0) { 
 		perror("UDP socket bind failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 
-	if (bind(clientsockfd, (struct sockaddr *)&clientservaddr, sizeof(clientservaddr)) < 0) {
+	/* Bind the socket with the server address */
+	if(bind(clientsockfd, (struct sockaddr *)&clientservaddr, sizeof(clientservaddr)) < 0) {
 		perror("Client socket bind failed");
 		exit(EXIT_FAILURE);
 	}
 
-	if (bind(monitorsockfd, (struct sockaddr *)&monitorservaddr, sizeof(monitorservaddr)) < 0) {
+	/* Bind the socket with the server address */
+	if(bind(monitorsockfd, (struct sockaddr *)&monitorservaddr, sizeof(monitorservaddr)) < 0) {
 		perror("Monitor socket bind failed");
 		exit(EXIT_FAILURE);
 	}
 
 	printf("The AWS is up and running \n");
-	if (listen(clientsockfd, 1) < 0) {
+
+	/* Listening fro client connection */
+	if(listen(clientsockfd, 1) < 0) {
 		perror("Client listen");
 		exit(EXIT_FAILURE);
 	}
 
-	if (listen(monitorsockfd, 1) < 0) {
+	/* Listening for monitor connection */
+	if(listen(monitorsockfd, 1) < 0) {
 		perror("Monitor listen");
 		exit(EXIT_FAILURE);
 	}
 
-	if ((monitor_socket = accept(monitorsockfd, (struct sockaddr *)&monitorservaddr, (socklen_t*)&tcp_addrlen)) < 0) {
+	/* Accepting monitor connection */
+	if((monitor_socket = accept(monitorsockfd, (struct sockaddr *)&monitorservaddr, (socklen_t*)&tcp_addrlen)) < 0) {
 		perror("Monitor accept");
 		exit(EXIT_FAILURE);
 	}
 
 	while(1) {
-		if ((client_socket = accept(clientsockfd, (struct sockaddr *)&clientservaddr, (socklen_t*)&tcp_addrlen)) < 0) {
+		/* Accepting client connection in loop because client will connect again and again */
+		if((client_socket = accept(clientsockfd, (struct sockaddr *)&clientservaddr, (socklen_t*)&tcp_addrlen)) < 0) {
 			perror("Client accept");
 			exit(EXIT_FAILURE);
 		}
+
 		/* Reading values from client */
 		n = recv(client_socket, buffer, MAXLINE, 0);
 		buffer[n] = '\0';
@@ -141,7 +151,8 @@ int main() {
 		printf("The AWS received < %d > matches from Backend-server < A > using UDP over port < %d >\n", n, SERVER_A_PORT);
 		printf("The AWS received < %d > matches from Backend-server < B > using UDP over port < %d >\n", m, SERVER_B_PORT);
 
-		if (n == 1 || m == 1) {
+		/* Checking whether data is present in any of the Database */
+		if(n == 1 || m == 1) {
 			strcat(buffer, " ");
 			if (n == 1) {
 				strcat(buffer, bufferA);
@@ -168,6 +179,7 @@ int main() {
 			printf("The AWS sent detailed results to the monitor using TCP over port < %d >\n", MONITOR_PORT); 
 		}
 		else {
+			/* Sending no match found message to both client and monitor */
 			send(client_socket, nomatch, strlen(nomatch), 0);		
 			send(monitor_socket, nomatch, strlen(nomatch), 0);
 			printf("The AWS sent No Match to the monitor and the client using TCP over ports <%d> and <%d>, respectively\n", CLIENT_PORT, MONITOR_PORT);
